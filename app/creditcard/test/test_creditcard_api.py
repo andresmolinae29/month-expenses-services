@@ -12,10 +12,16 @@ from core.models import CreditCard
 
 from creditcard.serializers import (
     CreditCardSerializer,
+    CreditCardDetailSerializer
 )
 
 
 CREDITCARD_URL = reverse('creditcard:creditcard-list')
+
+
+def detail_url(creditcard_id):
+    """Create and return an expense detail URL"""
+    return reverse('creditcard:creditcard-detail', args=[creditcard_id])
 
 
 def create_creditcard(user, **params):
@@ -87,3 +93,103 @@ class PrivateCreditCardAPITest(TestCase):
         serializer = CreditCardSerializer(creditcards, many=True)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data, serializer.data)
+
+    def test_get_credit_card_detail(self):
+        """Test get the credit card detail"""
+        creditcard = create_creditcard(user=self.user)
+
+        url = detail_url(creditcard.id)
+        res = self.client.get(url)
+
+        serializer = CreditCardDetailSerializer(creditcard)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, serializer.data)
+
+    def test_create_creditcard(self):
+        """Test to create a credit card with the endpoint"""
+        payload = {
+            'name': 'Cencosud',
+            'cut_off_day': 15,
+            'payment_due_day': 28
+        }
+
+        res = self.client.post(CREDITCARD_URL, payload)
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        creditcard = CreditCard.objects.get(id=res.data.get('id'))
+        for k, v in payload.items():
+            self.assertEqual(getattr(creditcard, k), v)
+        self.assertEqual(creditcard.user, self.user)
+
+    def test_partial_update(self):
+        """Test partial update for creditcard"""
+        original_name = 'Cencosud'
+        creditcard = create_creditcard(
+            user=self.user,
+            name=original_name
+        )
+
+        payload = {
+            'name': 'Rappi'
+        }
+        url = detail_url(creditcard.id)
+        res = self.client.patch(url, payload)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        creditcard.refresh_from_db()
+        self.assertEqual(creditcard.name, payload.get('name'))
+        self.assertEqual(creditcard.user, self.user)
+
+    def test_full_update(self):
+        """Test full update of a creditcard"""
+        creditcard = create_creditcard(
+            user=self.user,
+        )
+
+        payload = {
+            'name': 'Rappi',
+            'cut_off_day': 28,
+            'payment_due_day': 10
+        }
+
+        url = detail_url(creditcard.id)
+        res = self.client.put(url, payload)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        creditcard.refresh_from_db()
+        for k, v in payload.items():
+            self.assertEqual(getattr(creditcard, k), v)
+        self.assertEqual(creditcard.user, self.user)
+
+    def test_update_user_returns_error(self):
+        """Test changing the creditcard user results in an error"""
+        new_user = create_user(email='user2@example.com', password='pass123')
+        creditcard = create_creditcard(user=self.user)
+
+        payload = {'user': new_user.id}
+        url = detail_url(creditcard.id)
+        self.client.patch(url, payload)
+
+        creditcard.refresh_from_db()
+        self.assertEqual(creditcard.user, self.user)
+
+    def test_delete_creditcard(self):
+        """Test deleting creditcard successful"""
+        creditcard = create_creditcard(user=self.user)
+
+        url = detail_url(creditcard.id)
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(CreditCard.objects.filter(id=creditcard.id).exists())
+
+    def test_delete_expense_other_users_creditcard_error(self):
+        """Test trying to delete another user creditcard"""
+        new_user = create_user(email='user2@example.com', password='pass123')
+        creditcard = create_creditcard(user=new_user)
+
+        url = detail_url(creditcard.id)
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(CreditCard.objects.filter(id=creditcard.id).exists())

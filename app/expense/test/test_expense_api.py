@@ -105,7 +105,7 @@ class PrivateExpenseAPITest(TestCase):
         self.assertEqual(res.data, serializer.data)
 
     def test_create_expense(self):
-        """Test creating an erxpense"""
+        """Test creating an expense"""
         payload = {
             'name': 'food'
         }
