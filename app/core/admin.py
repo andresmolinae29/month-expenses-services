@@ -46,5 +46,5 @@ class UserAdmin(BaseUserAdmin):
 
 
 admin.site.register(models.User, UserAdmin)
-admin.site.register(models.Expense)
+admin.site.register(models.ExpenseType)
 admin.site.register(models.CreditCard)

@@ -12,7 +12,10 @@ from expense import views
 
 
 router = DefaultRouter()
+router.register('expensetypes', views.ExpenseTypeViewSet)
+router.register('creditcards', views.CreditCardViewSet)
 router.register('expenses', views.ExpenseViewSet)
+router.register('creditexpenses', views.CreditExpenseViewSet)
 
 app_name = 'expense'
 

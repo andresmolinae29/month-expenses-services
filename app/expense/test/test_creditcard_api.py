@@ -10,18 +10,18 @@ from rest_framework.test import APIClient
 
 from core.models import CreditCard
 
-from creditcard.serializers import (
+from expense.serializers import (
     CreditCardSerializer,
     CreditCardDetailSerializer
 )
 
 
-CREDITCARD_URL = reverse('creditcard:creditcard-list')
+CREDITCARD_URL = reverse('expense:creditcard-list')
 
 
 def detail_url(creditcard_id):
     """Create and return an expense detail URL"""
-    return reverse('creditcard:creditcard-detail', args=[creditcard_id])
+    return reverse('expense:creditcard-detail', args=[creditcard_id])
 
 
 def create_creditcard(user, **params):
@@ -183,7 +183,7 @@ class PrivateCreditCardAPITest(TestCase):
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(CreditCard.objects.filter(id=creditcard.id).exists())
 
-    def test_delete_expense_other_users_creditcard_error(self):
+    def test_delete_other_users_creditcard_error(self):
         """Test trying to delete another user creditcard"""
         new_user = create_user(email='user2@example.com', password='pass123')
         creditcard = create_creditcard(user=new_user)

@@ -45,7 +45,6 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'user',
     'expense',
-    'creditcard',
 ]
 
 MIDDLEWARE = [

@@ -30,5 +30,4 @@ urlpatterns = [
         ),
     path('api/user/', include('user.urls')),
     path('api/expense/', include('expense.urls')),
-    path('api/creditcard/', include('creditcard.urls'))
 ]
