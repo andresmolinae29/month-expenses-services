@@ -141,8 +141,6 @@ class PrivateExpenseAPITest(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         expense = Expense.objects.get(user=self.user)
-        # self.assertEqual(expenses.count(), 1)
-        # expense = expenses[0]
         for k, v in payload.items():
             if isinstance(getattr(expense, k), ExpenseType):
                 pass
@@ -215,7 +213,7 @@ class PrivateExpenseAPITest(TestCase):
         )
 
     def test_delete_other_users_expense_error(self):
-        """Test tring to delete another user expensetype"""
+        """Test trying to delete another user expensetype"""
         other_user = create_user(
             email='other@example.com',
             password='pass123'

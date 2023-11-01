@@ -122,17 +122,17 @@ class PrivateCreditExpenseAPITest(TestCase):
         self.assertEqual(res.data, serializer.data)
 
     def test_retrieve_credit_expense_limited_to_user(self):
-        """Test retrieving credit for user limited only to current user"""
+        """Test retrieving credit expense for
+            user limited only to current user"""
         other_user = create_user(
             email='other2@example.com',
             password='pass123'
-            )
+        )
         create_credit_expense(
             user=self.user,
             expensetype=self.expense_type,
             creditcard=self.creditcard
         )
-
         create_credit_expense(
             user=other_user,
             expensetype=self.expense_type,
@@ -152,7 +152,7 @@ class PrivateCreditExpenseAPITest(TestCase):
             user=self.user,
             expensetype=self.expense_type,
             creditcard=self.creditcard
-            )
+        )
 
         url = detail_url(credit_expense.id)
         res = self.client.get(url)
@@ -160,3 +160,154 @@ class PrivateCreditExpenseAPITest(TestCase):
         serializer = CreditExpenseDetailSerializer(credit_expense)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data, serializer.data)
+
+    def test_create_credit_expense(self):
+        """Test creating a credit expense"""
+
+        payload = {
+            'amount': 1011.1,
+            'effective_date': datetime.now().date(),
+            'expensetype': {
+                'name': 'food'
+            },
+            'creditcard': {
+                'name': 'rappi'
+            }
+        }
+
+        res = self.client.post(CREDIT_EXPENSE_URL, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        creditexpense = CreditExpense.objects.get(id=res.data['id'])
+        for k, v in payload.items():
+            if isinstance(
+                getattr(creditexpense, k),
+                    (ExpenseType, CreditCard)):
+                pass
+            else:
+                self.assertEqual(getattr(creditexpense, k), v)
+        self.assertEqual(creditexpense.user, self.user)
+        self.assertGreater(
+            creditexpense.payment_date,
+            creditexpense.cut_off_date
+        )
+
+    def test_partial_update(self):
+        """Test update partially a credit expense"""
+        original_amount = 10000
+        original_effective_date = datetime(
+            year=2023, month=10, day=15
+        ).date()
+
+        credit_expense = create_credit_expense(
+            user=self.user,
+            expensetype=self.expense_type,
+            creditcard=self.creditcard,
+            amount=original_amount,
+            effective_date=original_effective_date
+        )
+
+        payload = {
+            'amount': 20000,
+            'effective_date': datetime(
+                year=2023,
+                month=11,
+                day=1
+            ).date()
+        }
+
+        url = detail_url(credit_expense.id)
+        res = self.client.patch(url, payload)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        credit_expense.refresh_from_db()
+        self.assertEqual(credit_expense.amount, payload.get('amount'))
+        self.assertEqual(
+            credit_expense.effective_date,
+            payload.get('effective_date')
+        )
+        self.assertEqual(credit_expense.cut_off_date, datetime.strptime(
+            '2023-11-28',
+            '%Y-%m-%d').date()
+        )
+        self.assertEqual(credit_expense.payment_date, datetime.strptime(
+            '2023-12-12',
+            '%Y-%m-%d').date()
+        )
+
+    def test_credit_expense_full_update(self):
+        """Test credit expense full update"""
+        creditexpense = create_credit_expense(
+            user=self.user,
+            expensetype=self.expense_type,
+            creditcard=self.creditcard,
+        )
+
+        create_creditcard(
+            name='Cencosud',
+            cut_off_day=24,
+            payment_due_day=10,
+            user=self.user,
+        )
+
+        payload = {
+            "amount": 110,
+            "effective_date": datetime.now().date(),
+            "expensetype": {
+                "name": "Voleyball"
+            },
+            "creditcard": {
+                "name": "Cencosud"
+            }
+        }
+
+        url = detail_url(creditexpense.id)
+        res = self.client.put(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        creditexpense.refresh_from_db()
+        for k, v in payload.items():
+            if isinstance(
+                getattr(creditexpense, k),
+                    (ExpenseType, CreditCard)):
+                pass
+            else:
+                self.assertEqual(getattr(creditexpense, k), v)
+        self.assertEqual(creditexpense.user, self.user)
+
+    def test_delete_credit_expense(self):
+        """Test delete a credit expense"""
+        credit_expense = create_credit_expense(
+            user=self.user,
+            expensetype=self.expense_type,
+            creditcard=self.creditcard,
+        )
+
+        url = detail_url(credit_expense.id)
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(
+            CreditExpense.objects.filter(id=credit_expense.id).exists()
+        )
+
+    def test_delete_other_user_credit_expense_error(self):
+        """Test trying to delete another user credit expense"""
+        other_user = create_user(
+            email='other2@example.com',
+            password='pass123'
+        )
+
+        credit_expense = create_credit_expense(
+            user=other_user,
+            expensetype=self.expense_type,
+            creditcard=self.creditcard,
+        )
+
+        url = detail_url(credit_expense.id)
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(
+            CreditExpense.objects.filter(id=credit_expense.id).exists()
+        )
